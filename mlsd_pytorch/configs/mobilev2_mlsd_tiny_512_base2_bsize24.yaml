@@ -43,5 +43,5 @@ loss:
 
 decode:
     score_thresh: 0.05 # in original paper is suggested 0.125
-    len_thresh: 5
+    len_thresh: 5 # minimum length of lines (maybe too high, could be canceled in custom training or set to zero)
     top_k: 500

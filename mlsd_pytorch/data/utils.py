@@ -8,15 +8,23 @@ def swap_line_pt_maybe(line):
     '''
     [x0, y0, x1, y1]
     '''
-    L = line
-    # if line[0] > line[2]:
-    #     L = [line[2], line[3], line[0], line[1]]
-    if abs(line[0] - line[2]) > abs(line[1] - line[3]):
-        if line[0] > line[2]:
-            L = [line[2], line[3], line[0], line[1]]
-    else:
+    L = line.copy()
+
+    if line[0] > line[2]:
+        L = [line[2], line[3], line[0], line[1]]
+    elif line[0] == line[2]:
         if line[1] > line[3]:
             L = [line[2], line[3], line[0], line[1]]
+
+    # OLD VERSION
+    # if line[0] > line[2]:
+    #     L = [line[2], line[3], line[0], line[1]]
+    # if abs(line[0] - line[2]) > abs(line[1] - line[3]):
+    #     if line[0] > line[2]:
+    #         L = [line[2], line[3], line[0], line[1]]
+    # else:
+    #     if line[1] > line[3]:
+    #         L = [line[2], line[3], line[0], line[1]]
     return L
 
 def deccode_output_score_and_ptss(tpMap, topk_n = 200, ksize = 5):

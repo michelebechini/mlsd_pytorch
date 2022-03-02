@@ -38,9 +38,9 @@ class ConvBNReLU(nn.Sequential):
 #             padding = (kernel_size - 1) // 2
 
         super(ConvBNReLU, self).__init__(
-            nn.Conv2d(in_planes, out_planes, kernel_size, stride, padding, groups=groups, bias=False),
+            nn.Conv2d(in_planes, out_planes, kernel_size, stride, padding, groups=groups, bias=False), # find a way to add kerner_regularizer
             nn.BatchNorm2d(out_planes),
-            nn.ReLU6(inplace=True)
+            nn.ReLU6(inplace=True) # try with simple RELU or Leaky Relu
         )
         self.max_pool = nn.MaxPool2d(kernel_size=stride, stride=stride)
 

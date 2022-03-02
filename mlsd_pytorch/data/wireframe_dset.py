@@ -144,7 +144,6 @@ class Line_Dataset(Dataset):
             GaussNoise(var_limit=(10, 50), mean=0, always_apply=True)
         ], p=1, keypoint_params=KeypointParams(format='xy', remove_invisible=False)) # add the keyword for keypoints
 
-
         # OLD Version
         # aug = Compose(
         #     [
@@ -170,17 +169,32 @@ class Line_Dataset(Dataset):
         #     ],
         #     p=1.0)
         return aug
-    
+
     def _aug_test(self, input_size=384):
+
+        # NEW VERSION TODO: Check the normalization and tune the noises
         aug = Compose(
             [
-                #Resize(height=input_size,
+                # Resize(height=input_size,
                 #       width=input_size),
-                Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
-                # Normalize(mean=(0.0, 0.0, 0.0), std=(1.0 / 255, 1.0 / 255, 1.0 / 255))
+                GaussianBlur(sigma_limit=75, always_apply=True),
+                GaussNoise(var_limit=(10, 50), mean=0, always_apply=True),
+                Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), always_apply=True)
             ],
             p=1.0)
+
+
+        # OLD VERSION
+        # aug = Compose(
+        #     [
+        #         #Resize(height=input_size,
+        #         #       width=input_size),
+        #         Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
+        #         # Normalize(mean=(0.0, 0.0, 0.0), std=(1.0 / 255, 1.0 / 255, 1.0 / 255))
+        #     ],
+        #     p=1.0)
         return aug
+
     def _line_len_fn(self, l1):
         len1 = np.sqrt((l1[2] - l1[0]) ** 2 + (l1[3] - l1[1]) ** 2)
         return len1
@@ -204,7 +218,7 @@ class Line_Dataset(Dataset):
 
                 if not self.is_train:
                     lines.append(line)
-                elif self._line_len_fn(line) > self.min_len:
+                elif self._line_len_fn(line) > self.min_len: # during training append only lines higher than a threshold
                     lines.append(line)
 
             dst_ann = {

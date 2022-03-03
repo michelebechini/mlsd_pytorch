@@ -2,6 +2,7 @@ import  os
 import torch
 import math
 import sys
+from torchsummary import summary
 
 sys.path.append(os.path.dirname(__file__)+'/../')
 
@@ -31,6 +32,8 @@ def train(cfg):
 
 
     #print(model)
+    summary(model, (3, 512, 512), 1)
+
     if os.path.exists(cfg.train.load_from):
         print('load from: ', cfg.train.load_from)
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

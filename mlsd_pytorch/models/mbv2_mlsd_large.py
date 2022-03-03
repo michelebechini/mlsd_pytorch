@@ -42,7 +42,7 @@ class ConvBNReLU(nn.Sequential):
             nn.BatchNorm2d(out_planes),
             nn.ReLU6(inplace=True)
         )
-        self.max_pool = nn.MaxPool2d(kernel_size=stride, stride=stride) # Why there is MAX POOL????
+        self.max_pool = nn.MaxPool2d(kernel_size=stride, stride=stride) # Why there is MAX POOL???? # Not used in forward pass
 
 
     def forward(self, x):
@@ -89,6 +89,7 @@ class InvertedResidual(nn.Module):
 class MobileNetV2(nn.Module):
     def __init__(self, pretrained=True):
         """
+        From https://github.com/pytorch/vision/blob/97385df0f675b805d974994389a6ea2f0de51a19/torchvision/models/mobilenetv2.py#L88
         MobileNet V2 main class
         Args:
             num_classes (int): Number of classes
@@ -135,7 +136,7 @@ class MobileNetV2(nn.Module):
                 input_channel = output_channel
 
         self.features = nn.Sequential(*features)
-        self.fpn_selected = [1, 3, 6, 10, 13]
+        self.fpn_selected = [1, 3, 6, 10, 13] # block for skip connections
         # weight initialization
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -155,6 +156,7 @@ class MobileNetV2(nn.Module):
         # This exists since TorchScript doesn't support inheritance, so the superclass method
         # (this one) needs to have a name other than `forward` that can be accessed in a subclass
         fpn_features = []
+        # print(len(self.features))
         for i, f in enumerate(self.features):
             if i > self.fpn_selected[-1]:
                 break
@@ -186,7 +188,7 @@ class MobileV2_MLSD_Large(nn.Module):
 
         self.backbone = MobileNetV2(pretrained=True)
         ## A, B
-        self.block15 = BlockTypeA(in_c1= 64, in_c2= 96,
+        self.block15 = BlockTypeA(in_c1= 64, in_c2= 96, # the first input is from the skip-connection
                                   out_c1= 64, out_c2=64,
                                   upscale=False)
         self.block16 = BlockTypeB(128, 64)

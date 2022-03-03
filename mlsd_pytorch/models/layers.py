@@ -22,7 +22,7 @@ class BlockTypeA(nn.Module):
         b = self.conv1(b)
         a = self.conv2(a)
         if self.upscale:
-            b = F.interpolate(b, scale_factor=2.0, mode='bilinear', align_corners=True)
+            b = F.interpolate(b, scale_factor=2.0, mode='bilinear', align_corners=True) # upscale before convolution NOT after
         return torch.cat((a, b), dim=1)
 
 
@@ -32,12 +32,12 @@ class BlockTypeB(nn.Module):
         self.conv1 = nn.Sequential(
             nn.Conv2d(in_c, in_c,  kernel_size=3, padding=1),
             nn.BatchNorm2d(in_c),
-            nn.ReLU()
+            nn.ReLU() # maybe set "inplace=True"?
         )
         self.conv2 = nn.Sequential(
             nn.Conv2d(in_c, out_c, kernel_size=3, padding=1),
             nn.BatchNorm2d(out_c),
-            nn.ReLU()
+            nn.ReLU() # maybe set "inplace=True"?
         )
 
     def forward(self, x):
@@ -49,7 +49,7 @@ class BlockTypeC(nn.Module):
     def __init__(self, in_c, out_c):
         super(BlockTypeC, self).__init__()
         self.conv1 = nn.Sequential(
-            nn.Conv2d(in_c, in_c,  kernel_size=3, padding=5, dilation=5),
+            nn.Conv2d(in_c, in_c,  kernel_size=3, padding=5, dilation=5), #padding could be set to 'same'
             nn.BatchNorm2d(in_c),
             nn.ReLU()
         )

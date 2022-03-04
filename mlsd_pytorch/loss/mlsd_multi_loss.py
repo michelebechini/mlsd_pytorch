@@ -12,14 +12,19 @@ __all__ = [
 ]
 
 def weighted_bce_with_logits(out, gt, pos_w=1.0, neg_w=30.0):
-    pos_mask = torch.where(gt != 0, torch.ones_like(gt), torch.zeros_like(gt))
-    neg_mask = torch.ones_like(pos_mask) - pos_mask
+    pos_mask = torch.where(gt != 0, torch.ones_like(gt), torch.zeros_like(gt)) # output a tensor with 1 where gt!=0, else 0 with same shape of gt
+    neg_mask = torch.ones_like(pos_mask) - pos_mask # opposite of pos mask
 
-    loss = F.binary_cross_entropy_with_logits(out, gt, reduction='none')
-    loss_pos = (loss * pos_mask).sum() / torch.sum(pos_mask)
-    loss_neg = (loss * neg_mask).sum() / torch.sum(neg_mask)
+    # NEW VERSION
+    loss_pos = -torch.sum((gt * torch.nn.functional.logsigmoid(out))) / torch.sum(pos_mask)
+    loss_neg = -torch.sum((neg_mask * torch.log(1 - torch.sigmoid(out)))) / torch.sum(neg_mask)
 
+    # OLD Version
+    # loss = F.binary_cross_entropy_with_logits(out, gt, reduction='none')
+    # loss_pos = (loss * pos_mask).sum() / torch.sum(pos_mask)
+    # loss_neg = (loss * neg_mask).sum() / torch.sum(neg_mask)
     loss = loss_pos * pos_w + loss_neg * neg_w
+
     return loss
 
 
@@ -362,7 +367,7 @@ class LineSegmentLoss(nn.Module):
         if self.with_focal_loss and self.focal_loss_level >= 3:
             line_seg_loss = focal_neg_loss_with_logits(out_line_seg, gt_line_seg)
         else:
-            line_seg_loss = weighted_bce_with_logits(out_line_seg, gt_line_seg, 1.0, 1.0)
+            line_seg_loss = weighted_bce_with_logits(out_line_seg, gt_line_seg, 1.0, 30.0)
 
         out_junc_seg = out[:, 14, :, :]
         gt_junc_seg = gt[:, 14, :, :]

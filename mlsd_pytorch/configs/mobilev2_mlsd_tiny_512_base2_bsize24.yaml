@@ -63,7 +63,7 @@ loss:
     
     with_match_loss: False
     with_focal_loss: True
-    focal_loss_level: 0
+    focal_loss_level: 0 # 0: only in tp # 1: in tp and sol # 2: in tp, sol, junc # 3: in tp, sol, junc, line
     with_sol_loss: True
     match_sap_thresh: 5.0
 

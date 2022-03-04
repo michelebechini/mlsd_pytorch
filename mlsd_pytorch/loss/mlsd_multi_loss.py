@@ -116,9 +116,9 @@ class LineSegmentLoss(nn.Module):
         super(LineSegmentLoss, self).__init__()
         self.input_size = cfg.datasets.input_size
 
-        self.with_SOL_loss = cfg.loss.with_sol_loss
-        self.with_match_loss = cfg.loss.with_match_loss
-        self.with_focal_loss = cfg.loss.with_focal_loss
+        self.with_SOL_loss = cfg.loss.with_sol_loss # set True to use SOL augmentation
+        self.with_match_loss = cfg.loss.with_match_loss # set True to use match loss
+        self.with_focal_loss = cfg.loss.with_focal_loss # set True to use focal loss instead of Weighted BCE
 
         # 0: only in tp
         # 1: in tp and sol
@@ -132,19 +132,19 @@ class LineSegmentLoss(nn.Module):
         self.decode_top_k = cfg.decode.top_k  # 200
 
         self.loss_w_dict = {
-            'tp_center_loss': 10.0,
+            'tp_center_loss': 1.0,
             'tp_displacement_loss': 1.0,
             'tp_len_loss': 1.0,
             'tp_angle_loss': 1.0,
             'tp_match_loss': 1.0,
-            'tp_centerness_loss': 1.0,  # current not support
+            #'tp_centerness_loss': 1.0,  # current not support
 
             'sol_center_loss': 1.0,
             'sol_displacement_loss': 1.0,
             'sol_len_loss': 1.0,
             'sol_angle_loss': 1.0,
             'sol_match_loss': 1.0,
-            'sol_centerness_loss': 1.0,  # current not support
+            #'sol_centerness_loss': 1.0,  # current not support
 
             'line_seg_loss': 1.0,
             'junc_seg_loss': 1.0

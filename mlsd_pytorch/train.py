@@ -36,16 +36,16 @@ def train(cfg):
     if os.path.exists(cfg.train.load_from):
         print('load from: ', cfg.train.load_from)
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        model.load_state_dict(torch.load(cfg.train.load_from,map_location=device),strict=False)
+        model.load_state_dict(torch.load(cfg.train.load_from, map_location=device), strict=False)
 
     if cfg.train.milestones_in_epo:
-        ns = len(train_loader)
+        ns = len(train_loader) # this length represent the number of steps in each epoch
         milestones = []
         for m in cfg.train.milestones:
             milestones.append(m * ns)
         cfg.train.milestones = milestones
 
-    optimizer = torch.optim.Adam(params=model.parameters(),lr=cfg.train.learning_rate,weight_decay=cfg.train.weight_decay)
+    optimizer = torch.optim.Adam(params=model.parameters(), lr=cfg.train.learning_rate, weight_decay=cfg.train.weight_decay)
 
     if cfg.train.use_step_lr_policy:
 

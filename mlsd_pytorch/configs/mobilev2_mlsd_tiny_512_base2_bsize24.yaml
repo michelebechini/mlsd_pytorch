@@ -4,7 +4,7 @@ datasets:
 
 model:
     model_name: 'mobilev2_mlsd'
-    with_deconv: True
+    with_deconv: False
 
 # For train on michele's PC
 train:

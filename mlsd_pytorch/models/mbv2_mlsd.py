@@ -1,6 +1,7 @@
 import torch
 import timm
 import torch.nn as nn
+from torch.nn import functional as F
 from mlsd_pytorch.models.layers import *
 import torch.utils.model_zoo as model_zoo
 
@@ -138,7 +139,7 @@ class MobileNetV2(nn.Module):
         # print('fea blocks:', len(features))
         self.features = nn.Sequential(*features)
 
-        self.fpn_selected = [1, 3, 6, 10]
+        self.fpn_selected = [1, 3, 6, 10] # the output of feature 1 should be unused in M-LSD tiny
         # weight initialization
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -219,8 +220,8 @@ class BilinearConvTranspose2d(nn.ConvTranspose2d):
 
     def reset_parameters(self):
         """Reset the weight and bias."""
-        nn.init.constant(self.bias, 0)
-        nn.init.constant(self.weight, 0)
+        nn.init.constant_(self.bias, 0)
+        nn.init.constant_(self.weight, 0)
         bilinear_kernel = self.bilinear_kernel(self.stride)
         for i in range(self.in_channels):
             if self.groups == 1:

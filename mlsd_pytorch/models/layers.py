@@ -19,10 +19,10 @@ class BlockTypeA(nn.Module):
         self.upscale = upscale
 
     def forward(self, a, b):
-        b = self.conv1(b)
-        a = self.conv2(a)
         if self.upscale:
             b = F.interpolate(b, scale_factor=2.0, mode='bilinear', align_corners=True) # upscale before convolution NOT after
+        b = self.conv1(b)
+        a = self.conv2(a)
         return torch.cat((a, b), dim=1)
 
 

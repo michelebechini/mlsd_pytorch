@@ -24,6 +24,7 @@ from albumentations import (
     ColorJitter,
     GaussianBlur,
     GaussNoise,
+    Resize,
     KeypointParams
 )
 
@@ -140,8 +141,8 @@ class Line_Dataset(Dataset):
                 Downscale(scale_min=0.25, scale_max=0.75, interpolation=3, p=0.5)
                 ], p=0.5),
             ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0., p=0.5),
-            GaussianBlur(sigma_limit=75, always_apply=True),
-            GaussNoise(var_limit=(10, 50), mean=0, always_apply=True)
+            #GaussianBlur(sigma_limit=75, always_apply=True), # already applied to all images in _aug_test
+            #GaussNoise(var_limit=(10, 50), mean=0, always_apply=True) # already applied to all images in _aug_test
         ], p=1, keypoint_params=KeypointParams(format='xy', remove_invisible=False)) # add the keyword for keypoints
 
         # OLD Version
@@ -170,18 +171,17 @@ class Line_Dataset(Dataset):
         #     p=1.0)
         return aug
 
-    def _aug_test(self, input_size=384):
+    def _aug_test(self, input_size=512):
 
-        # NEW VERSION TODO: Check the normalization and tune the noises
+        # NEW VERSION TODO: tune the noises (check)
         aug = Compose(
             [
-                # Resize(height=input_size,
-                #       width=input_size),
-                GaussianBlur(sigma_limit=75, always_apply=True),
-                GaussNoise(var_limit=(10, 50), mean=0, always_apply=True),
-                Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), always_apply=True)
+                Resize(height=input_size, width=input_size, interpolation=3, always_apply=True),
+                GaussianBlur(blur_limit=0, sigma_limit=(1, 1), always_apply=True),
+                GaussNoise(var_limit=(0.0022, 0.0022), mean=0, always_apply=True),
+                Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), always_apply=True) # needed to use pretrain on imagenet
             ],
-            p=1.0)
+            p=1.0, keypoint_params=KeypointParams(format='xy', remove_invisible=False)) # add the keyword for keypoints
 
 
         # OLD VERSION
@@ -322,28 +322,122 @@ class Line_Dataset(Dataset):
         return do_aug, img, ann_origin
 
 
-    def load_label(self, ann, do_aug):
-        norm_lines = []
-        for l in ann['lines']:
+    # def load_label(self, ann, do_aug):
+    #     norm_lines = []
+    #     for l in ann['lines']:
+    #
+    #         ll = [
+    #             np.clip(l[0] / ann['img_w'], 0, 1),
+    #             np.clip(l[1] / ann['img_h'], 0, 1),
+    #             np.clip(l[2] / ann['img_w'], 0, 1),
+    #             np.clip(l[3] / ann['img_h'], 0, 1)
+    #         ]
+    #         x0, y0, x1, y1 = 256 * ll[0], 256 * ll[1], 256 * ll[2], 256 * ll[3]
+    #         if x0 == x1 and y0 == y1:
+    #             print('fatal err!')
+    #             print(ann['img_w'], ann['img_h'])
+    #             print(ll)
+    #             print(l)
+    #             print(ann)
+    #             exit(0)
+    #
+    #         norm_lines.append(ll)
+    #
+    #     ann['norm_lines'] = norm_lines
+    #
+    #     label_cache_path = os.path.basename(ann['img_full_fn'])[:-4] + '.npy'
+    #     label_cache_path = self.cache_dir + '/' + label_cache_path
+    #
+    #     can_load = self.with_cache and not  do_aug
+    #
+    #     if can_load and self.cache_to_mem and label_cache_path  in self.cache_dict.keys():
+    #         label = self.cache_dict[label_cache_path]
+    #
+    #     elif can_load  and os.path.exists(label_cache_path):
+    #         label = np.load(label_cache_path)
+    #         if  self.cache_to_mem:
+    #             self.cache_dict[label_cache_path] = label
+    #     else:
+    #
+    #         tp_mask = gen_TP_mask2(ann['norm_lines'], self.input_size // 2, self.input_size // 2,
+    #                                with_ext=self.cfg.datasets.with_centermap_extend)
+    #         sol_mask, _ = gen_SOL_map(ann['norm_lines'], self.input_size // 2, self.input_size // 2,
+    #                                   with_ext=False)
+    #
+    #         junction_map, line_map = gen_junction_and_line_mask(ann['norm_lines'],
+    #                                                             self.input_size // 2, self.input_size // 2)
+    #
+    #         label = np.zeros((2 * 7 + 2, self.input_size // 2, self.input_size // 2), dtype=np.float32)
+    #         label[0:7, :, :] = sol_mask
+    #         label[7:14, :, :] = tp_mask
+    #         label[14, :, :] = junction_map[0]
+    #         label[15, :, :] = line_map[0]
+    #         if not do_aug and self.with_cache:
+    #             #
+    #             if self.cache_to_mem:
+    #                 #print("cache to mem: {} [ total: {} ]".format(label_cache_path,len(self.cache_dict) ))
+    #                 self.cache_dict[label_cache_path] = label
+    #             else:
+    #                 #print("cache to cache dir:", label_cache_path)
+    #                 np.save(label_cache_path, label)
+    #
+    #     return label
 
-            ll = [
-                np.clip(l[0] / ann['img_w'], 0, 1),
-                np.clip(l[1] / ann['img_h'], 0, 1),
-                np.clip(l[2] / ann['img_w'], 0, 1),
-                np.clip(l[3] / ann['img_h'], 0, 1)
-            ]
-            x0, y0, x1, y1 = 256 * ll[0], 256 * ll[1], 256 * ll[2], 256 * ll[3]
-            if x0 == x1 and y0 == y1:
-                print('fatal err!')
-                print(ann['img_w'], ann['img_h'])
-                print(ll)
-                print(l)
-                print(ann)
-                exit(0)
+    def load_label_v2(self, img, ann):
 
-            norm_lines.append(ll)
+        do_aug = True
 
-        ann['norm_lines'] = norm_lines
+        orig_lines = ann['lines']
+
+        # extract the keypoints to be transformed from lines
+        # Note: line = [pt[0][0], pt[0][1], pt[1][0], pt[1][1]]
+        kp_from_lines = []
+        for line in orig_lines:
+            kp_from_lines.append([line[0], line[1]]) # x, y value of the starting point
+            kp_from_lines.append([line[2], line[3]])  # x, y value of the ending point
+
+        if self.is_train:
+            img = self.train_aug(image=img, keypoints=kp_from_lines)['image']
+            kp_from_lines = self.train_aug(image=img, keypoints=kp_from_lines)['keypoints']
+
+        img_norm = self.test_aug(image=img, keypoints=kp_from_lines)['image']
+        kp_norm_lines_512 = self.test_aug(image=img, keypoints=kp_from_lines)['keypoints']
+
+        norm_lines_512 = []
+        norm_lines_256 = []
+
+        for i in range(0, len(kp_norm_lines_512)-1, 2): # iterate with step 2
+
+            # append the lines in 512pp image in the format line = [pt[0][0], pt[0][1], pt[1][0], pt[1][1]]
+            norm_lines_512.append([kp_norm_lines_512[i][0], kp_norm_lines_512[i][1],
+                                   kp_norm_lines_512[i+1][0], kp_norm_lines_512[i+1][1]])
+
+            norm_lines_256.append([kp_norm_lines_512[i][0]/2, kp_norm_lines_512[i][1]/2,
+                                   kp_norm_lines_512[i + 1][0]/2, kp_norm_lines_512[i + 1][1]/2])
+
+        ann['norm_lines'] = norm_lines_256
+        ann['norm_lines_512'] = norm_lines_512
+
+        # for l in ann['lines']:
+        #
+        #     ll = [
+        #         np.clip(l[0] / ann['img_w'], 0, 1),
+        #         np.clip(l[1] / ann['img_h'], 0, 1),
+        #         np.clip(l[2] / ann['img_w'], 0, 1),
+        #         np.clip(l[3] / ann['img_h'], 0, 1)
+        #     ]
+        #     x0, y0, x1, y1 = 256 * ll[0], 256 * ll[1], 256 * ll[2], 256 * ll[3]
+        #     if x0 == x1 and y0 == y1:
+        #         print('fatal err!')
+        #         print(ann['img_w'], ann['img_h'])
+        #         print(ll)
+        #         print(l)
+        #         print(ann)
+        #         exit(0)
+        #
+        #     norm_lines.append(ll)
+        #
+        # ann['norm_lines'] = norm_lines
 
         label_cache_path = os.path.basename(ann['img_full_fn'])[:-4] + '.npy'
         label_cache_path = self.cache_dir + '/' + label_cache_path
@@ -386,32 +480,40 @@ class Line_Dataset(Dataset):
     def __getitem__(self, index):
 
         ann = self.anns[index].copy()
-        img = cv2.imread(ann['img_full_fn'])
+        img = cv2.imread(ann['img_full_fn']) # read the image as BGR color
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) # convert to RGB
+        img = cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F) # normalize image in range [0, 1]
 
-        do_aug = False
-        if self.is_train and random.random() < 0.5:
-            do_aug, img, ann = self._geo_aug(img, ann)
+        # OLD VERSION
+        # do_aug = False
+        # if self.is_train and random.random() < 0.5:
+        #     do_aug, img, ann = self._geo_aug(img, ann)
+        #
+        # img = cv2.resize(img, (self.input_size, self.input_size))
+        #
+        # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-        img = cv2.resize(img, (self.input_size, self.input_size))
 
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        # TODO: resize the image to the input size, do all the transformations including the line keypoint
+        # TODO: resize only the keypoints to half the size of the image (this will be the format of the output of the ANN)
 #         if not self.is_train:
 #             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 #         elif random.random() > 0.5:
 #             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-        label = self.load_label(ann, do_aug)
-        ext_lines = get_ext_lines(ann['norm_lines'], self.input_size // 2, self.input_size // 2)
-
-        norm_lines = ann['norm_lines']
-        norm_lines_512_list = []
-        for l in norm_lines:
-            norm_lines_512_list.append([
-                l[0] * 512,
-                l[1] * 512,
-                l[2] * 512,
-                l[3] * 512,
-            ])
+        # OLD VERSION
+        # label = self.load_label(ann, do_aug)
+        # ext_lines = get_ext_lines(ann['norm_lines'], self.input_size // 2, self.input_size // 2)
+        #
+        # norm_lines = ann['norm_lines']
+        # norm_lines_512_list = []
+        # for l in norm_lines:
+        #     norm_lines_512_list.append([
+        #         l[0] * 512,
+        #         l[1] * 512,
+        #         l[2] * 512,
+        #         l[3] * 512,
+        #     ])
 
         if self.is_train:
             img = self.train_aug(image=img)['image']
@@ -443,7 +545,7 @@ def LineDataset_collate_fn(batch):
     for inx in range(batch_size):
         im, img_origin, label_mask, \
         norm_lines_512, norm_lines_512_tensor, \
-        sol_lines_512, img_fn = batch[inx]
+        sol_lines_512, img_fn = batch[inx] # call the get_item
 
         images[inx] = im.transpose((2, 0, 1))
         labels[inx] = label_mask

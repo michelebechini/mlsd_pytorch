@@ -25,6 +25,8 @@ from albumentations import (
     GaussianBlur,
     GaussNoise,
     Resize,
+    LongestMaxSize,
+    PadIfNeeded,
     KeypointParams
 )
 
@@ -176,10 +178,13 @@ class Line_Dataset(Dataset):
         # NEW VERSION TODO: tune the noises (check)
         aug = Compose(
             [
-                Resize(height=input_size, width=input_size, interpolation=3, always_apply=True),
+                #Resize(height=input_size, width=input_size, interpolation=3, always_apply=True),
+                LongestMaxSize(max_size=input_size, interpolation=1, always_apply=True),
+                PadIfNeeded(min_height=input_size, min_width=input_size, border_mode=1, always_apply=True),
                 GaussianBlur(blur_limit=0, sigma_limit=(1, 1), always_apply=True),
                 GaussNoise(var_limit=(0.0022, 0.0022), mean=0, always_apply=True),
-                Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), always_apply=True) # needed to use pretrain on imagenet
+                # Normalization is needed if you pretrain on imagenet-like data, otherwise not
+                Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), always_apply=True)
             ],
             p=1.0, keypoint_params=KeypointParams(format='xy', remove_invisible=False)) # add the keyword for keypoints
 
@@ -453,10 +458,13 @@ class Line_Dataset(Dataset):
                 self.cache_dict[label_cache_path] = label
         else:
 
+            # generate gt masks for the TP representation
             tp_mask = gen_TP_mask2(ann['norm_lines'], self.input_size // 2, self.input_size // 2,
                                    with_ext=self.cfg.datasets.with_centermap_extend)
-            sol_mask, _ = gen_SOL_map(ann['norm_lines'], self.input_size // 2, self.input_size // 2,
-                                      with_ext=False)
+
+            # generate gt masks for SOL augmentation
+            sol_mask, ext_lines = gen_SOL_map(ann['norm_lines'], self.input_size // 2, self.input_size // 2,
+                                              with_ext=False)
 
             junction_map, line_map = gen_junction_and_line_mask(ann['norm_lines'],
                                                                 self.input_size // 2, self.input_size // 2)
@@ -466,6 +474,7 @@ class Line_Dataset(Dataset):
             label[7:14, :, :] = tp_mask
             label[14, :, :] = junction_map[0]
             label[15, :, :] = line_map[0]
+
             if not do_aug and self.with_cache:
                 #
                 if self.cache_to_mem:
@@ -475,7 +484,7 @@ class Line_Dataset(Dataset):
                     #print("cache to cache dir:", label_cache_path)
                     np.save(label_cache_path, label)
 
-        return label
+        return label, ann, img, img_norm, ext_lines
 
     def __getitem__(self, index):
 
@@ -483,6 +492,17 @@ class Line_Dataset(Dataset):
         img = cv2.imread(ann['img_full_fn']) # read the image as BGR color
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) # convert to RGB
         img = cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F) # normalize image in range [0, 1]
+
+        label, ann, img, img_norm, ext_lines_256 = self.load_label_v2(img, ann)
+
+        norm_lines = ann['norm_lines']
+        norm_lines_512_list = ann['norm_lines_512']
+
+        _, ext_lines = gen_SOL_map(ann['norm_lines_512'], self.input_size, self.input_size, with_ext=False)
+
+        norm_lines_512_tensor = torch.from_numpy(np.array(norm_lines_512_list, np.float32))
+        sol_lines_512_tensor = torch.from_numpy(np.array(ext_lines, np.float32))
+
 
         # OLD VERSION
         # do_aug = False
@@ -515,14 +535,14 @@ class Line_Dataset(Dataset):
         #         l[3] * 512,
         #     ])
 
-        if self.is_train:
-            img = self.train_aug(image=img)['image']
-        #img_norm = (img / 127.5) - 1.0
-        img_norm = self.test_aug(image=img)['image']
+        # if self.is_train:
+        #     img = self.train_aug(image=img)['image']
+        # #img_norm = (img / 127.5) - 1.0
+        # img_norm = self.test_aug(image=img)['image']
 
 
-        norm_lines_512_tensor = torch.from_numpy(np.array(norm_lines_512_list, np.float32))
-        sol_lines_512_tensor = torch.from_numpy(np.array(ext_lines, np.float32) * 512)
+        # norm_lines_512_tensor = torch.from_numpy(np.array(norm_lines_512_list, np.float32))
+        # sol_lines_512_tensor = torch.from_numpy(np.array(ext_lines, np.float32) * 512)
 
         return img_norm, img, label, \
                norm_lines_512_list, \

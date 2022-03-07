@@ -240,25 +240,35 @@ def TP_map_to_line_numpy(centermap, dis_map, thresh=0.2, inputW = 512, inputH= 5
 #     return  lens, ang
 
 
-def line_len_and_angle(x0, y0, x1, y1):
+def norm_line_len_and_angle(x0, y0, x1, y1, img_diag):
+
     if abs(x0 - x1) < 1e-6:
         ang = np.pi / 2
     else:
-        ang = np.arctan(abs((y0 - y1) / (x0 - x1)))
+        # angle of the line with respect to the x-axis in rad in range [0, pi]
+        ang = np.arctan((y0 - y1) / (x0 - x1))
+        if ang < 0:
+            ang = np.arctan2((y0 - y1), (x0 - x1))
 
-    ang = ang / (2 * np.pi) + 0.5
+    # normalize the angle as declared in https://arxiv.org/pdf/2106.00186v2.pdf
+    ang_norm = ang / (2 * np.pi) + 0.5
     len = np.sqrt((x0 - x1) ** 2 + (y0 - y1) ** 2)
-    return len, ang
+    len_norm = len/img_diag
+    return len_norm, ang_norm
 
 
 def near_area_n(xc, yc, n=5):
+
     if n <= 1:
         return [[xc, yc]]
+
     n = n // 2
     ptss = []
+
     for x in range(xc - n, xc + n + 1):
         for y in range(yc - n, yc + n + 1):
             ptss.append([x, y])
+
     return ptss
 
 def cut_line_by_xmin(line, xmin):
@@ -434,150 +444,257 @@ def work_around_line(x0, y0, x1, y1, n=2, r=0.0, thickness=3):
 #     tp_mask = np.concatenate((centermap, displacement_map, length_map, degree_map), axis=0)
 #     return tp_mask
 
+# def gen_TP_mask2(norm_lines,  h = 256, w = 256, with_ext=False):
+#     """
+#     1 cengter + 4  dis + 2
+#     return [7, h, w]
+#     """
+#
+#     #h, w, _ = img.shape
+#
+#     len_divide_v = np.sqrt(h**2 + w**2)
+#     radius = 1
+#
+#     centermap = np.zeros((1, h, w), dtype=np.uint8)
+#     #displacement_map = -np.ones((4, h, w), dtype=np.float32) * 1000.0
+#
+#     displacement_map = np.zeros((4, h, w), dtype=np.float32)
+#     length_map = np.zeros((1, h, w), dtype=np.float32)
+#     degree_map = np.zeros((1, h, w), dtype=np.float32)
+#
+#     for l in norm_lines:
+#         x0 = int(round(l[0] * w))
+#         y0 = int(round(l[1] * h))
+#         x1 = int(round(l[2] * w))
+#         y1 = int(round(l[3] * h))
+#
+#         xc = round(w * (l[0] + l[2]) / 2)
+#         yc = round(h * (l[1] + l[3]) / 2)
+#
+#         xc = int(np.clip(xc, 0, w - 1))
+#         yc = int(np.clip(yc, 0, h - 1))
+#
+#         centermap[0, yc, xc] = 255
+#
+#         line_len, ang = line_len_and_angle(x0, y0, x1, y1)
+#         line_len /= len_divide_v
+#         length_map[0, yc, xc] = line_len
+#         degree_map[0, yc, xc] = ang
+#
+#         x0d = x0 - xc
+#         y0d = y0 - yc
+#         x1d = x1 - xc
+#         y1d = y1 - yc
+#
+#         #print('x0d: ', x0d)
+#
+#         displacement_map[0, yc, xc] = x0d  # / 2
+#         displacement_map[1, yc, xc] = y0d  # / 2
+#         displacement_map[2, yc, xc] = x1d  # / 2
+#         displacement_map[3, yc, xc] = y1d  # / 2
+#
+#         ## walk around line
+#         #ptss = work_around_line(x0, y0, x1, y1, n=5, r=0.0, thickness=3)
+#
+#         # extrapolated to a 3×3 window
+#         ptss = near_area_n(xc, yc, n=3)
+#         for p in ptss:
+#             xc = round(p[0])
+#             yc = round(p[1])
+#             xc = int(np.clip(xc, 0, w - 1))
+#             yc = int(np.clip(yc, 0, h - 1))
+#             # x0d = x0 - xc
+#             # y0d = y0 - yc
+#             # x1d = x1 - xc
+#             # y1d = y1 - yc
+#             displacement_map[0, yc, xc] = x0d# / 2
+#             displacement_map[1, yc, xc] = y0d# / 2
+#             displacement_map[2, yc, xc] = x1d# / 2
+#             displacement_map[3, yc, xc] = y1d# / 2
+#
+#             length_map[0, yc, xc] = line_len
+#             degree_map[0, yc, xc] = ang
+#
+#         xc = round(w * (l[0] + l[2]) / 2)
+#         yc = round(h * (l[1] + l[3]) / 2)
+#
+#         xc = int(np.clip(xc, 0, w - 1))
+#         yc = int(np.clip(yc, 0, h - 1))
+#
+#         centermap[0, yc, xc] = 255
+#
+#         line_len, ang = line_len_and_angle(x0, y0, x1, y1)
+#         line_len /= len_divide_v
+#         length_map[0, yc, xc] = line_len
+#         degree_map[0, yc, xc] = ang
+#
+#         x0d = x0 - xc
+#         y0d = y0 - yc
+#         x1d = x1 - xc
+#         y1d = y1 - yc
+#
+#         displacement_map[0, yc, xc] = x0d  # / 2
+#         displacement_map[1, yc, xc] = y0d  # / 2
+#         displacement_map[2, yc, xc] = x1d  # / 2
+#         displacement_map[3, yc, xc] = y1d  # / 2
+#
+#     centermap[0, :, :] = cv2.GaussianBlur(centermap[0, :, :], (3,3), 0.0)
+#     centermap = np.array(centermap, dtype=np.float32) / 255.0
+#     b = centermap.max() - centermap.min()
+#     if b !=0:
+#         centermap = ( centermap - centermap.min() ) / b
+#
+#     tp_mask = np.concatenate((centermap, displacement_map, length_map, degree_map), axis=0)
+#     return tp_mask
+
+
 def gen_TP_mask2(norm_lines,  h = 256, w = 256, with_ext=False):
     """
     1 cengter + 4  dis + 2
     return [7, h, w]
     """
+    # note that in norm_lines, each line is like: line = [pt[0][0], pt[0][1], pt[1][0], pt[1][1]]
+    # and they are already expressed in the H/2 x W/2 array
 
-    #h, w, _ = img.shape
-
-    len_divide_v = np.sqrt(h**2 + w**2)
+    img_diag = np.sqrt(h**2 + w**2)
     radius = 1
 
+    # initialize maps
     centermap = np.zeros((1, h, w), dtype=np.uint8)
-    #displacement_map = -np.ones((4, h, w), dtype=np.float32) * 1000.0
-
     displacement_map = np.zeros((4, h, w), dtype=np.float32)
     length_map = np.zeros((1, h, w), dtype=np.float32)
     degree_map = np.zeros((1, h, w), dtype=np.float32)
 
     for l in norm_lines:
-        x0 = int(round(l[0] * w))
-        y0 = int(round(l[1] * h))
-        x1 = int(round(l[2] * w))
-        y1 = int(round(l[3] * h))
+        # round all the coordinates and make them int
+        x0 = int(round(l[0]))
+        y0 = int(round(l[1]))
+        x1 = int(round(l[2]))
+        y1 = int(round(l[3]))
 
-        xc = round(w * (l[0] + l[2]) / 2)
-        yc = round(h * (l[1] + l[3]) / 2)
+        # compute the coordinates of the centerpoint
+        xc = int(round((l[0] + l[2]) / 2))
+        yc = int(round((l[1] + l[3]) / 2))
 
-        xc = int(np.clip(xc, 0, w - 1))
-        yc = int(np.clip(yc, 0, h - 1))
+        # place value 1.0 in the centermap
+        centermap[0, yc, xc] = 1.
 
-        centermap[0, yc, xc] = 255
+        # compute normalized line length and angle
+        len_norm, ang_norm = norm_line_len_and_angle(x0, y0, x1, y1, img_diag)
 
-        line_len, ang = line_len_and_angle(x0, y0, x1, y1)
-        line_len /= len_divide_v
-        length_map[0, yc, xc] = line_len
-        degree_map[0, yc, xc] = ang
+        # place the normalized values in the respective heath maps
+        length_map[0, yc, xc] = len_norm
+        degree_map[0, yc, xc] = ang_norm
 
-        x0d = x0 - xc
-        y0d = y0 - yc
-        x1d = x1 - xc
-        y1d = y1 - yc
+        # compute the 4 displacements
+        x0d = x0 - xc # d0x
+        y0d = y0 - yc # d0y
+        x1d = x1 - xc # d1x
+        y1d = y1 - yc # d1y
 
-        #print('x0d: ', x0d)
+        # put the displacement values in the respective maps
+        displacement_map[0, yc, xc] = x0d
+        displacement_map[1, yc, xc] = y0d
+        displacement_map[2, yc, xc] = x1d
+        displacement_map[3, yc, xc] = y1d
 
-        displacement_map[0, yc, xc] = x0d  # / 2
-        displacement_map[1, yc, xc] = y0d  # / 2
-        displacement_map[2, yc, xc] = x1d  # / 2
-        displacement_map[3, yc, xc] = y1d  # / 2
-
-        ## walk around line
-        #ptss = work_around_line(x0, y0, x1, y1, n=5, r=0.0, thickness=3)
-
-        # extrapolated to a 3×3 window
+        # expand the maps to a 3×3 window
         ptss = near_area_n(xc, yc, n=3)
+
         for p in ptss:
-            xc = round(p[0])
-            yc = round(p[1])
-            xc = int(np.clip(xc, 0, w - 1))
-            yc = int(np.clip(yc, 0, h - 1))
-            # x0d = x0 - xc
-            # y0d = y0 - yc
-            # x1d = x1 - xc
-            # y1d = y1 - yc
-            displacement_map[0, yc, xc] = x0d# / 2
-            displacement_map[1, yc, xc] = y0d# / 2
-            displacement_map[2, yc, xc] = x1d# / 2
-            displacement_map[3, yc, xc] = y1d# / 2
+            px = int(np.clip(round(p[0]), 0, w-1)) # clip in order to do not exceed the image size
+            py = int(np.clip(round(p[1]), 0, w-1)) # clip in order to do not exceed the image size
 
-            length_map[0, yc, xc] = line_len
-            degree_map[0, yc, xc] = ang
+            # copy the displacement values computed in the 3x3 kernel points
+            displacement_map[0, py, px] = x0d
+            displacement_map[1, py, px] = y0d
+            displacement_map[2, py, px] = x1d
+            displacement_map[3, py, px] = y1d
 
-        xc = round(w * (l[0] + l[2]) / 2)
-        yc = round(h * (l[1] + l[3]) / 2)
+            # copy the normalized length and degree values computed in the 3x3 kernel points
+            length_map[0, py, px] = len_norm
+            degree_map[0, py, px] = ang_norm
 
-        xc = int(np.clip(xc, 0, w - 1))
-        yc = int(np.clip(yc, 0, h - 1))
+    # pad the centermap to get correct values in the correct position
+    center_padded = np.pad(centermap[0], pad_width=(1, 1), mode='constant', constant_values=0)
 
-        centermap[0, yc, xc] = 255
+    # apply the 3x3 kernel
+    blurred_center = cv2.GaussianBlur(center_padded, ksize=(3,3), sigmaX=1)
 
-        line_len, ang = line_len_and_angle(x0, y0, x1, y1)
-        line_len /= len_divide_v
-        length_map[0, yc, xc] = line_len
-        degree_map[0, yc, xc] = ang
+    # go back to the centermap format and size
+    centermap = np.expand_dims(blurred_center[1:-1, 1:-1], axis=0)
 
-        x0d = x0 - xc
-        y0d = y0 - yc
-        x1d = x1 - xc
-        y1d = y1 - yc
+    # rescale to have 1 in exact center location
+    centermap = cv2.normalize(centermap, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
 
-        displacement_map[0, yc, xc] = x0d  # / 2
-        displacement_map[1, yc, xc] = y0d  # / 2
-        displacement_map[2, yc, xc] = x1d  # / 2
-        displacement_map[3, yc, xc] = y1d  # / 2
-
-    centermap[0, :, :] = cv2.GaussianBlur(centermap[0, :, :], (3,3), 0.0)
-    centermap = np.array(centermap, dtype=np.float32) / 255.0
-    b = centermap.max() - centermap.min()
-    if b !=0:
-        centermap = ( centermap - centermap.min() ) / b
-
+    # concatenate all the results
     tp_mask = np.concatenate((centermap, displacement_map, length_map, degree_map), axis=0)
+
     return tp_mask
 
 
+
 def get_ext_lines(norm_lines, h=256, w=256, min_len=0.125):
-    mu_half = min_len / 2
+
+    input_size = h*2
+    mu_half = input_size * min_len / 2
     ext_lines = []
+
     for line in norm_lines:
+
         x0, y0, x1, y1 = line
+
         line_len = np.sqrt((x0 - x1) ** 2 + (y0 - y1) ** 2)
-        nn = int(line_len / mu_half) - 1
-        # print("nn: ", nn)
-        if nn <= 1:
+
+        # compute the internally dividing k points as in https://arxiv.org/pdf/2106.00186v2.pdf
+        k = round(line_len / mu_half) - 1
+
+        # note: total points = k + 2 (start and end); segments = k+1
+
+        if k <= 1:
+            # do not split the line, so append it as it is
             ext_lines.append(line)
         else:
-            ## y = k * x + b
-            if abs(x0 - x1) > abs(y0 - y1):
-                ## y = k* x + b
-                k = (y1 - y0) / (x1 - x0)
-                b = y1 - k * x1
-                step = (x1 - x0) / (nn + 1)
-                len_step = 2 * step  # (x1 - x0) / (nn - 1)
-                for ix in range(nn):
-                    ix0 = x0 + ix * step
-                    # ix1 = x0 + (ix + 1) * step
-                    ix1 = ix0 + len_step
-                    iy0 = k * ix0 + b
-                    iy1 = k * ix1 + b
-                    ext_lines.append([ix0, iy0, ix1, iy1])
+            # split the line in k subparts
 
-            else:
-                ## x = k* y + b
-                k = (x1 - x0) / (y1 - y0)
-                b = x1 - k * y1
-                step = (y1 - y0) / (nn + 1)
-                len_step = 2 * step  # (y1 - y0) / (nn - 1)
-                for iy in range(nn):
-                    iy0 = y0 + iy * step
-                    # iy1 = y0 + (iy + 1) * step
-                    iy1 = iy0 + len_step
-                    ix0 = k * iy0 + b
-                    ix1 = k * iy1 + b
-                    ext_lines.append([ix0, iy0, ix1, iy1])
-    # print("ext_lines: ", len(ext_lines))
+            start = np.array([[x0, y0]])
+            end = np.array([[x1, y1]])
+            step_len = line_len / k
+            step_dir = (end-start)/(np.linalg.norm(end-start))
+
+            for i in range(k):
+                new_start = start + i * step_len * step_dir
+                new_end = start + (i*2) * step_len * step_dir
+                ext_lines.append([new_start[0, 0], new_start[0, 1], new_end[0, 0], new_end[0, 1]])
+
+            # if abs(x0 - x1) > abs(y0 - y1):
+            #     ## y = k* x + b
+            #     k = (y1 - y0) / (x1 - x0)
+            #     b = y1 - k * x1
+            #     step = (x1 - x0) / (nn + 1)
+            #     len_step = 2 * step  # (x1 - x0) / (nn - 1)
+            #     for ix in range(nn):
+            #         ix0 = x0 + ix * step
+            #         # ix1 = x0 + (ix + 1) * step
+            #         ix1 = ix0 + len_step
+            #         iy0 = k * ix0 + b
+            #         iy1 = k * ix1 + b
+            #         ext_lines.append([ix0, iy0, ix1, iy1])
+            #
+            # else:
+            #     ## x = k* y + b
+            #     k = (x1 - x0) / (y1 - y0)
+            #     b = x1 - k * y1
+            #     step = (y1 - y0) / (nn + 1)
+            #     len_step = 2 * step  # (y1 - y0) / (nn - 1)
+            #     for iy in range(nn):
+            #         iy0 = y0 + iy * step
+            #         # iy1 = y0 + (iy + 1) * step
+            #         iy1 = iy0 + len_step
+            #         ix0 = k * iy0 + b
+            #         ix1 = k * iy1 + b
+            #         ext_lines.append([ix0, iy0, ix1, iy1])
+
     return ext_lines
 
 def gen_SOL_map(norm_lines,  h =256, w =256, min_len =0.125, with_ext= False):
@@ -586,43 +703,41 @@ def gen_SOL_map(norm_lines,  h =256, w =256, min_len =0.125, with_ext= False):
     return [7, h, w]
     """
     ext_lines = get_ext_lines(norm_lines, h, w, min_len)
+
     return gen_TP_mask2(ext_lines, h, w, with_ext), ext_lines
 
 
 def gen_junction_and_line_mask(norm_lines, h = 256, w = 256):
-    junction_map = np.zeros((h, w, 1), dtype=np.float32)
-    line_map = np.zeros((h, w, 1), dtype=np.float32)
+
+    junction_map = np.zeros((1, h, w), dtype=np.float32)
+    line_map = np.zeros((1, h, w), dtype=np.float32)
 
     radius = 1
     for l in norm_lines:
-        x0 = int(round(l[0] * w))
-        y0 = int(round(l[1] * h))
-        x1 = int(round(l[2] * w))
-        y1 = int(round(l[3] * h))
-        cv2.line(line_map, (x0, y0), (x1, y1), (255, 255, 255), radius)
-        #cv2.circle(junction_map, (x0, y0), radius, (255, 255, 255), radius)
-        #cv2.circle(junction_map, (x1, y1), radius, (255, 255, 255), radius)
-        
-        ptss = near_area_n(x0, y0, n=3)
-        ptss.extend( near_area_n(x1, y1, n=3) )
-        for p in ptss:
-            xc = round(p[0])
-            yc = round(p[1])
-            xc = int(np.clip(xc, 0, w - 1))
-            yc = int(np.clip(yc, 0, h - 1))
-            junction_map[yc, xc, 0] = 255
+        # round all the coordinates and make them int
+        x0 = int(round(l[0]))
+        y0 = int(round(l[1]))
+        x1 = int(round(l[2]))
+        y1 = int(round(l[3]))
+        cv2.line(line_map[0], pt1=(x0, y0), pt2=(x1, y1), color=(1., 1., 1.), thickness=radius)
 
-    junction_map[:, :, 0] = cv2.GaussianBlur(junction_map[:, :, 0], (3,3), 0.0)
-    junction_map = np.array(junction_map, dtype=np.float32) / 255.0
-    b = junction_map.max() - junction_map.min()
-    if b !=0:
-        junction_map = ( junction_map - junction_map.min() ) / b
-    # line map use binary one
-    line_map = np.array(line_map, dtype=np.float32) / 255.0
-#     line_map[:, :, 0] = cv2.GaussianBlur(line_map[:, :, 0], (3, 3), 0.0)
-#     line_map = np.array(line_map, dtype=np.float32) / 255.0
-#     b = line_map.max() - line_map.min()
-#     if b !=0:
-#         line_map = ( line_map - line_map.min() ) / b
+        # expand the maps to a 3×3 window both for start point and ending point
+        ptss = near_area_n(x0, y0, n=3)
+        ptss.extend(near_area_n(x1, y1, n=3))
+
+        for p in ptss:
+            px = int(np.clip(round(p[0]), 0, w - 1))  # clip in order to do not exceed the image size
+            py = int(np.clip(round(p[1]), 0, w - 1))  # clip in order to do not exceed the image size
+            # copy the junction values computed in the 3x3 kernel points
+            junction_map[0, py, px] = 1
+
+    # pad the junction map to get correct values in the correct position
+    junction_padded = np.pad(junction_map[0], pad_width=(1, 1), mode='constant', constant_values=0)
+    # apply the 3x3 kernel
+    blurred_junc = cv2.GaussianBlur(junction_padded, ksize=(3, 3), sigmaX=1)
+    # go back to the junction map format and size
+    junction_map = np.expand_dims(blurred_junc[1:-1, 1:-1], axis=0)
+    # rescale to have 1 in exact center location
+    junction_map = cv2.normalize(junction_map, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
 
     return junction_map, line_map

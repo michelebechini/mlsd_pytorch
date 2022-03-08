@@ -18,6 +18,7 @@ from albumentations import (
     Normalize,
     Flip,
     Rotate,
+    SafeRotate,
     Affine,
     RandomScale,
     Downscale,
@@ -136,7 +137,7 @@ class Line_Dataset(Dataset):
         # TODO: tune the noises for the image
         aug = Compose([
             Flip(p=0.5),  # random flip vertically and/or horizontally the image
-            Rotate(limit=90, interpolation=3, border_mode=1, p=0.5), # rotate with 90° limits with Area interpolation and border reflect
+            SafeRotate(limit=90, interpolation=3, border_mode=1, p=0.5), # rotate with 90° limits with Area interpolation and border reflect
             Affine(shear=[-45, 45], interpolation=3, fit_output=True, mode=1, p=0.5), # shear with area interpolation and border reflect
             OneOf([
                 RandomScale(scale_limit=0.5, interpolation=3, p=0.5), # resize the image to smaller (0.5) or bigger (1.5) size
@@ -402,11 +403,13 @@ class Line_Dataset(Dataset):
             kp_from_lines.append([line[2], line[3]])  # x, y value of the ending point
 
         if self.is_train:
-            img = self.train_aug(image=img, keypoints=kp_from_lines)['image']
-            kp_from_lines = self.train_aug(image=img, keypoints=kp_from_lines)['keypoints']
+            transf1 = self.train_aug(image=img, keypoints=kp_from_lines)
+            img = transf1['image']
+            kp_from_lines = transf1['keypoints']
 
-        img_norm = self.test_aug(image=img, keypoints=kp_from_lines)['image']
-        kp_norm_lines_512 = self.test_aug(image=img, keypoints=kp_from_lines)['keypoints']
+        transf2 = self.test_aug(image=img, keypoints=kp_from_lines)
+        img_norm = transf2['image']
+        kp_norm_lines_512 = transf2['keypoints']
 
         norm_lines_512 = []
         norm_lines_256 = []

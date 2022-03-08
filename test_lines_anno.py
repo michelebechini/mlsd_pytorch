@@ -10,6 +10,7 @@ from albumentations import (
     Normalize,
     Flip,
     Rotate,
+    SafeRotate,
     Affine,
     RandomScale,
     Downscale,
@@ -49,10 +50,13 @@ img = cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype
 
 aug1 = Compose([
             Flip(p=0.5),  # random flip vertically and/or horizontally the image
-            #Rotate(limit=90, interpolation=3, border_mode=1, p=0.5), # rotate with 90° limits with Area interpolation and border reflect
-            Affine(shear=[-45, 45], interpolation=3, fit_output=True, mode=1, p=0.5), # shear with area interpolation and border reflect
-            RandomScale(scale_limit=0.5, interpolation=3, always_apply=True),
-            ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0., p=0.5),
+            SafeRotate(limit=90, interpolation=3, border_mode=1, p=0.5), # rotate with 90° limits with Area interpolation and border reflect
+            # Affine(shear=[-45, 45], interpolation=3, fit_output=True, mode=1, p=0.5), # shear with area interpolation and border reflect
+            # OneOf([
+            #     RandomScale(scale_limit=0.5, interpolation=3, p=0.5),  # resize the image to smaller (0.5) or bigger (1.5) size
+            #     Downscale(scale_min=0.25, scale_max=0.75, interpolation=3, p=0.5)
+            # ], p=0.5),
+            # ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0., p=0.5),
             #GaussianBlur(sigma_limit=75, always_apply=True), # already applied to all images in _aug_test
             #GaussNoise(var_limit=(10, 50), mean=0, always_apply=True) # already applied to all images in _aug_test
         ], p=1, keypoint_params=KeypointParams(format='xy', remove_invisible=False)) # add the keyword for keypoints
@@ -84,20 +88,20 @@ keyps_orig = keyps.copy()
 
 transf1 = aug1(image=img, keypoints=keyps)
 
-img1 = transf1['image']
-keyps1 = transf1['keypoints']
+img = transf1['image']
+keyps = transf1['keypoints']
 
-transf2 = aug2(image=img1, keypoints=keyps1)
+transf2 = aug2(image=img, keypoints=keyps)
 
 img_mod = transf2['image']
 kp_mod = transf2['keypoints']
 
-# show mod image
-plt.imshow(img1)
-plt.title('MID MOD Image')
-for i in range(0, len(keyps1)-1, 2):
-    plt.plot([keyps1[i][0], keyps1[i+1][0]], [keyps1[i][1], keyps1[i+1][1]], 'go--', linewidth=2)
-plt.show()
+# # show mod image
+# plt.imshow(img1)
+# plt.title('MID MOD Image')
+# for i in range(0, len(keyps1)-1, 2):
+#     plt.plot([keyps1[i][0], keyps1[i+1][0]], [keyps1[i][1], keyps1[i+1][1]], 'go--', linewidth=2)
+# plt.show()
 
 # show mod image
 plt.imshow(img_mod)

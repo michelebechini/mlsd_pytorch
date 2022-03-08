@@ -573,11 +573,14 @@ def gen_TP_mask2(norm_lines,  h = 256, w = 256, with_ext=False):
         y1 = int(round(l[3]))
 
         # compute the coordinates of the centerpoint
-        xc = int(round((l[0] + l[2]) / 2))
-        yc = int(round((l[1] + l[3]) / 2))
+        xc = int(np.clip(round((l[0] + l[2]) / 2), 0, w - 1))
+        yc = int(np.clip(round((l[1] + l[3]) / 2), 0, h - 1))
 
         if xc<0 or xc> w-1:
-            print('error in image ')
+            print('error in image xc: ' + str(xc))
+        elif yc<0 or yc> h-1:
+            print('error in image yc ' + str(yc))
+
 
         # print('xc = ' + str(xc))
         # print('yc = ' + str(yc))

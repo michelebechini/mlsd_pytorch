@@ -28,7 +28,7 @@ def get_args():
 def train(cfg):
     train_loader = get_train_dataloader(cfg)
     val_loader   = get_val_dataloader(cfg)
-    model = build_model(cfg) #build_model(cfg).cuda() # add when training. it is just to avoid errors in local machine
+    model = build_model(cfg).cuda() # add when training. it is just to avoid errors in local machine
 
     summary(model, (3, 512, 512), 1)
     print(model)

@@ -1,4 +1,5 @@
 import json
+import os
 import numpy as np
 import cv2
 from mlsd_pytorch.data.utils import gen_TP_mask2, gen_SOL_map, gen_junction_and_line_mask
@@ -25,8 +26,9 @@ from albumentations import (
 import matplotlib.pyplot as plt
 
 
+base_path = os.getcwd()
 json_path = './data/wireframe_raw/train.json'
-img_path = '/Users/michelebechini/GitHub/mlsd_pytorch/data/wireframe_raw/images/'
+img_path = '/data/wireframe_raw/images/'
 
 with open(json_path, 'r') as f:
     variable = json.load(f)
@@ -44,19 +46,19 @@ for i in range(len(img1_data['lines'])):
     keyps.append([img1_data['lines'][i][2], img1_data['lines'][i][3]])
 
 
-img = cv2.imread(img_path + img1_data['filename'])
+img = cv2.imread(base_path + img_path + img1_data['filename'])
 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # convert to RGB
 img = cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
 
 aug1 = Compose([
             Flip(p=0.5),  # random flip vertically and/or horizontally the image
             SafeRotate(limit=90, interpolation=3, border_mode=1, p=0.5), # rotate with 90° limits with Area interpolation and border reflect
-            # Affine(shear=[-45, 45], interpolation=3, fit_output=True, mode=1, p=0.5), # shear with area interpolation and border reflect
-            # OneOf([
-            #     RandomScale(scale_limit=0.5, interpolation=3, p=0.5),  # resize the image to smaller (0.5) or bigger (1.5) size
-            #     Downscale(scale_min=0.25, scale_max=0.75, interpolation=3, p=0.5)
-            # ], p=0.5),
-            # ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0., p=0.5),
+            Affine(shear=[-45, 45], interpolation=3, fit_output=True, mode=1, p=0.5), # shear with area interpolation and border reflect
+            OneOf([
+                RandomScale(scale_limit=0.5, interpolation=3, p=0.5),  # resize the image to smaller (0.5) or bigger (1.5) size
+                Downscale(scale_min=0.25, scale_max=0.75, interpolation=3, p=0.5)
+            ], p=0.5),
+            ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0., p=0.5),
             #GaussianBlur(sigma_limit=75, always_apply=True), # already applied to all images in _aug_test
             #GaussNoise(var_limit=(10, 50), mean=0, always_apply=True) # already applied to all images in _aug_test
         ], p=1, keypoint_params=KeypointParams(format='xy', remove_invisible=False)) # add the keyword for keypoints
@@ -72,7 +74,7 @@ aug2 = Compose(
                 GaussianBlur(blur_limit=0, sigma_limit=(1, 1), always_apply=True),
                 GaussNoise(var_limit=(0.0022, 0.0022), mean=0, always_apply=True),
                 # Normalization is needed if you pretrain on imagenet-like data, otherwise not
-                #Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), always_apply=True)
+                Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), always_apply=True)
             ],
             p=1.0, keypoint_params=KeypointParams(format='xy', remove_invisible=False))
 
@@ -104,6 +106,7 @@ kp_mod = transf2['keypoints']
 # plt.show()
 
 # show mod image
+#img_mod = cv2.normalize(img_mod, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
 plt.imshow(img_mod)
 plt.title('FINAL MOD Image')
 for i in range(0, len(kp_mod)-1, 2):

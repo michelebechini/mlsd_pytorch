@@ -490,6 +490,7 @@ class Line_Dataset(Dataset):
 
         ann = self.anns[index].copy()
         img = cv2.imread(ann['img_full_fn']) # read the image as BGR color
+        print('img: ' + ann['img_full_fn'])
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) # convert to RGB
         img = cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F) # normalize image in range [0, 1]
 

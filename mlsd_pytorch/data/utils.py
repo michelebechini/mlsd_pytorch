@@ -576,6 +576,13 @@ def gen_TP_mask2(norm_lines,  h = 256, w = 256, with_ext=False):
         xc = int(round((l[0] + l[2]) / 2))
         yc = int(round((l[1] + l[3]) / 2))
 
+        if xc<0 or xc> w-1:
+            print('error in image ')
+
+        # print('xc = ' + str(xc))
+        # print('yc = ' + str(yc))
+
+
         # place value 1.0 in the centermap
         centermap[0, yc, xc] = 1.
 
@@ -616,7 +623,7 @@ def gen_TP_mask2(norm_lines,  h = 256, w = 256, with_ext=False):
             degree_map[0, py, px] = ang_norm
 
     # pad the centermap to get correct values in the correct position
-    center_padded = np.pad(centermap[0], pad_width=(1, 1), mode='constant', constant_values=0)
+    center_padded = np.pad(centermap[0], pad_width=(1, 1), mode='constant', constant_values=0).astype('float64')
 
     # apply the 3x3 kernel
     blurred_center = cv2.GaussianBlur(center_padded, ksize=(3,3), sigmaX=1)
@@ -659,12 +666,12 @@ def get_ext_lines(norm_lines, h=256, w=256, min_len=0.125):
 
             start = np.array([[x0, y0]])
             end = np.array([[x1, y1]])
-            step_len = line_len / k
+            step_len = line_len / (k+1)
             step_dir = (end-start)/(np.linalg.norm(end-start))
 
             for i in range(k):
                 new_start = start + i * step_len * step_dir
-                new_end = start + (i*2) * step_len * step_dir
+                new_end = new_start + 2 * step_len * step_dir
                 ext_lines.append([new_start[0, 0], new_start[0, 1], new_end[0, 0], new_end[0, 1]])
 
             # if abs(x0 - x1) > abs(y0 - y1):
@@ -732,7 +739,7 @@ def gen_junction_and_line_mask(norm_lines, h = 256, w = 256):
             junction_map[0, py, px] = 1
 
     # pad the junction map to get correct values in the correct position
-    junction_padded = np.pad(junction_map[0], pad_width=(1, 1), mode='constant', constant_values=0)
+    junction_padded = np.pad(junction_map[0], pad_width=(1, 1), mode='constant', constant_values=0).astype('float64')
     # apply the 3x3 kernel
     blurred_junc = cv2.GaussianBlur(junction_padded, ksize=(3, 3), sigmaX=1)
     # go back to the junction map format and size

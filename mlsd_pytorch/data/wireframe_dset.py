@@ -411,6 +411,10 @@ class Line_Dataset(Dataset):
         img_norm = transf2['image']
         kp_norm_lines_512 = transf2['keypoints']
 
+        # normalize the image to be fed to the Net in the range [-1, 1]
+        img_norm = cv2.normalize(img_norm, None, alpha=-1, beta=1, norm_type=cv2.NORM_MINMAX,
+                            dtype=cv2.CV_32F)  # normalize image in range [-1, 1]
+
         norm_lines_512 = []
         norm_lines_256 = []
 
@@ -495,7 +499,8 @@ class Line_Dataset(Dataset):
         img = cv2.imread(ann['img_full_fn']) # read the image as BGR color
         print('img: ' + ann['img_full_fn'])
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) # convert to RGB
-        img = cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F) # normalize image in range [0, 1]
+        # no need to normalize here, the output augmented image (img_norm) will be normalized to be in [-1, 1] range
+        #img = cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F) # normalize image in range [0, 1]
 
         label, ann, img, img_norm, ext_lines_256 = self.load_label_v2(img, ann)
 
@@ -571,7 +576,7 @@ def LineDataset_collate_fn(batch):
         norm_lines_512, norm_lines_512_tensor, \
         sol_lines_512, img_fn = batch[inx] # call the get_item
 
-        images[inx] = im.transpose((2, 0, 1))
+        images[inx] = im.transpose((2, 0, 1)) # WHY???
         labels[inx] = label_mask
         img_origin_list.append(img_origin)
         img_fns.append(img_fn)

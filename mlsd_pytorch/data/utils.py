@@ -737,7 +737,7 @@ def gen_junction_and_line_mask(norm_lines, h = 256, w = 256):
 
         for p in ptss:
             px = int(np.clip(round(p[0]), 0, w - 1))  # clip in order to do not exceed the image size
-            py = int(np.clip(round(p[1]), 0, w - 1))  # clip in order to do not exceed the image size
+            py = int(np.clip(round(p[1]), 0, h - 1))  # clip in order to do not exceed the image size
             # copy the junction values computed in the 3x3 kernel points
             junction_map[0, py, px] = 1
 

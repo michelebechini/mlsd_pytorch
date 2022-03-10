@@ -48,7 +48,7 @@ for i in range(len(img1_data['lines'])):
 
 img = cv2.imread(base_path + img_path + img1_data['filename'])
 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # convert to RGB
-img = cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+#img = cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
 
 aug1 = Compose([
             Flip(p=0.5),  # random flip vertically and/or horizontally the image
@@ -106,7 +106,7 @@ kp_mod = transf2['keypoints']
 # plt.show()
 
 # show mod image
-#img_mod = cv2.normalize(img_mod, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+img_mod = cv2.normalize(img_mod, None, alpha=-1, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
 plt.imshow(img_mod)
 plt.title('FINAL MOD Image')
 for i in range(0, len(kp_mod)-1, 2):

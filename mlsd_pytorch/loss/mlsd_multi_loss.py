@@ -93,11 +93,13 @@ def displacement_loss_func(pred_dis, gt_dis, gt_center_mask=None):
     # else:
     #     pos_v = x0.abs() + y0.abs() + x1.abs() + y1.abs()
     #     pos_mask = torch.where(pos_v != 0, torch.ones_like(x0), torch.zeros_like(x0))
-    pos_v = x0.abs() + y0.abs() + x1.abs() + y1.abs()
-    pos_mask = torch.where(pos_v != 0, torch.ones_like(x0), torch.zeros_like(x0))
+
+    pos_v = x0.abs() + y0.abs() + x1.abs() + y1.abs() # this to avoid problems if some displs are zero in one component
+
+    pos_mask = torch.where(pos_v != 0, torch.ones_like(x0), torch.zeros_like(x0)) # called H(p) in the original paper
     pos_mask_sum = pos_mask.sum()
 
-    pos_mask = pos_mask.unsqueeze(1)
+    pos_mask = pos_mask.unsqueeze(1) # make pos mask equal in shape to gt_dis
 
     pred_dis = pred_dis * pos_mask
     gt_dis = gt_dis * pos_mask

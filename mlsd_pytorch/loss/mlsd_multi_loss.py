@@ -64,9 +64,12 @@ def weighted_bce_with_logits(out, gt, pos_w=1.0, neg_w=30.0):
 #     return len_loss, angle_loss
 
 def len_and_angle_loss_func(pred_len, pred_angle, gt_len, gt_angle):
+
+    # apply the sigmoid to the predicted length and degree map
     pred_len = torch.sigmoid(pred_len)
     pred_angle = torch.sigmoid(pred_angle)
-    # only consider non zero part
+
+    # only consider non zero part (we use the same pos_mask for both len and degree)
     pos_mask = torch.where(gt_len != 0, torch.ones_like(gt_len), torch.zeros_like(gt_len))
     pos_mask_sum = pos_mask.sum()
 
@@ -369,10 +372,11 @@ class LineSegmentLoss(nn.Module):
         if self.with_focal_loss and self.focal_loss_level >= 3:
             line_seg_loss = focal_neg_loss_with_logits(out_line_seg, gt_line_seg)
         else:
-            line_seg_loss = weighted_bce_with_logits(out_line_seg, gt_line_seg, 1.0, 30.0)
+            line_seg_loss = weighted_bce_with_logits(out_line_seg, gt_line_seg, 1.0, 1.0) # as in the paper
 
         out_junc_seg = out[:, 14, :, :]
         gt_junc_seg = gt[:, 14, :, :]
+
         if self.with_focal_loss  and self.focal_loss_level >=2:
             junc_seg_loss = focal_neg_loss_with_logits(out_junc_seg, gt_junc_seg)
         else:
@@ -385,6 +389,7 @@ class LineSegmentLoss(nn.Module):
                 tp_gt_lines_512_list,
                 sol_gt_lines_512_list):
 
+        # there is a bug in line GT that becomes all zero after few epochs
         line_seg_loss, junc_seg_loss = self.line_and_juc_seg_loss(preds, gts)
 
         loss_dict = {

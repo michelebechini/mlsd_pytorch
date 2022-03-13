@@ -246,9 +246,11 @@ def norm_line_len_and_angle(x0, y0, x1, y1, img_diag):
         ang = np.pi / 2
     else:
         # angle of the line with respect to the x-axis in rad in range [0, pi]
-        ang = np.arctan((y0 - y1) / (x0 - x1))
-        if ang < 0:
-            ang = np.arctan2((y0 - y1), (x0 - x1))
+        ang = np.arctan(abs((y0 - y1) / (x0 - x1))) # use this to have always positive angles
+
+        # ang = np.arctan((y0 - y1) / (x0 - x1))
+        # if ang < 0:
+        #     ang = np.arctan2((y0 - y1), (x0 - x1))
 
     # normalize the angle as declared in https://arxiv.org/pdf/2106.00186v2.pdf
     ang_norm = ang / (2 * np.pi) + 0.5

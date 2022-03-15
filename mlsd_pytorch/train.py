@@ -30,8 +30,8 @@ def train(cfg):
     val_loader   = get_val_dataloader(cfg)
     model = build_model(cfg).cuda() # add when training. it is just to avoid errors in local machine
 
-    summary(model, (3, 512, 512), 1)
-    print(model)
+    #summary(model, (3, 512, 512), 1)
+    #print(model)
 
     if os.path.exists(cfg.train.load_from):
         print('load from: ', cfg.train.load_from)
